@@ -10,15 +10,19 @@ module Pronto
   class Undercover < Runner
     DEFAULT_LEVEL = :warning
 
+    attr_accessor :coverage, :config
+
     def initialize(patches, _commit = nil)
       super
+      @config = Pronto::ConfigFile.new.to_h['pronto-undercover']
+      @coverage = @config&.[]('coverage') || 0.8
       @patch_changeset = Pronto::PatchChangeset.new(patches)
     end
 
     # @return Array[Pronto::Message]
     def run
       return [] if !@patches || @patches.count.zero?
-
+      
       @patches
         .select { |patch| valid_patch?(patch) }
         .map { |patch| patch_to_undercover_message(patch) }
@@ -41,6 +45,7 @@ module Pronto
           .added_lines
           .select { |line| line.new_lineno == msg_line_no }
           .map do |line|
+            next if warning.coverage_f >= @coverage
             lines = untested_lines_for(warning)
             path = line.patch.delta.new_file[:path]
             msg = "#{warning.node.human_name} #{warning.node.name} missing tests " \
@@ -72,17 +77,16 @@ module Pronto
     def untested_lines_for(warning)
       warning.coverage.map do |ln, _cov|
         ln if warning.uncovered?(ln)
-      end.compact
+      end.compact.uniq
     end
 
     def undercover_options
-      config = Pronto::ConfigFile.new.to_h['pronto-undercover']
-      return ::Undercover::Options.new.parse([]) unless config
+      return ::Undercover::Options.new.parse([]) unless @config
 
       opts = []
-      opts << "-l#{config['lcov']}" if config['lcov']
-      opts << "-r#{config['ruby-syntax']}" if config['ruby-syntax']
-      opts << "-p#{config['path']}" if config['path']
+      opts << "-l#{@config['lcov']}" if @config['lcov']
+      opts << "-r#{@config['ruby-syntax']}" if @config['ruby-syntax']
+      opts << "-p#{@config['path']}" if @config['path']
       ::Undercover::Options.new.parse(opts)
     end
   end
