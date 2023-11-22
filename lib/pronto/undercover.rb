@@ -10,12 +10,12 @@ module Pronto
   class Undercover < Runner
     DEFAULT_LEVEL = :warning
 
-    attr_accessor :coverage, :config
+    attr_accessor :minimum_coverage, :config
 
     def initialize(patches, _commit = nil)
       super
       @config = Pronto::ConfigFile.new.to_h['pronto-undercover']
-      @coverage = @config&.[]('coverage') || 0.8
+      @minimum_coverage = @config&.[]('minimum_coverage') || 0.8
       @patch_changeset = Pronto::PatchChangeset.new(patches)
     end
 
@@ -45,12 +45,12 @@ module Pronto
           .added_lines
           .select { |line| line.new_lineno == msg_line_no }
           .map do |line|
-            next if warning.coverage_f >= @coverage
+            next if warning.coverage_f >= @minimum_coverage
             lines = untested_lines_for(warning)
             path = line.patch.delta.new_file[:path]
             msg = "#{warning.node.human_name} #{warning.node.name} missing tests " \
                   "for line#{'s' if lines.size > 1} #{lines.join(', ')} " \
-                  "(coverage: #{warning.coverage_f})"
+                  "(coverage: #{format_percentage(warning.coverage_f)})"
             Message.new(path, line, DEFAULT_LEVEL, msg, nil, self.class)
           end
       end
@@ -88,6 +88,10 @@ module Pronto
       opts << "-r#{@config['ruby-syntax']}" if @config['ruby-syntax']
       opts << "-p#{@config['path']}" if @config['path']
       ::Undercover::Options.new.parse(opts)
+    end
+
+    def format_percentage(coverage)
+      format('%.2f%%', coverage * 100)
     end
   end
 end
