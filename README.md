@@ -37,6 +37,7 @@ pronto-undercover:
   path: path/to/project
   lcov: path/to/project/coverage/report.lcov
   ruby-syntax: ruby19
+  minimum-coverage: 0.8 # default is 0.8
 ```
 
 ## License

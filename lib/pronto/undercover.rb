@@ -15,7 +15,7 @@ module Pronto
     def initialize(patches, _commit = nil)
       super
       @config = Pronto::ConfigFile.new.to_h['pronto-undercover']
-      @minimum_coverage = @config&.[]('minimum_coverage') || 0.8
+      @minimum_coverage = @config&.[]('minimum-coverage') || 0.8
       @patch_changeset = Pronto::PatchChangeset.new(patches)
     end
 
